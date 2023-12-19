@@ -1,0 +1,554 @@
+---
+title: "Modeling and CEA of malaria vaccine in Kenya"
+author: "Catherine Wenger"
+date: "2023-12-13"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(deSolve)
+library(ggplot2)
+```
+
+```{r}
+#preset parameters for all models 
+#prevalence
+pE=0.2
+pI=0.2
+pR=0.2
+
+#pop size models 1&2
+n1=4709493
+n2=9418986
+n3=37324930
+```
+
+No Vaccine:
+NOTE: I think the ggplot is pulling the wrong compartment data since its seir, not dsdedidr
+```{r}
+############# Model Equations ######################
+
+my_model <- function(times,yinit,pars){
+	
+	with(as.list(c(yinit,pars)), {
+	
+		N = S + E + I + R
+		dS_nv <- w*R-beta*S
+		dE_nv <- beta*S - lam*E
+		dI_nv <- lam*E - gamma*I
+		dR_nv <- gamma*I - w*R
+
+	return(list(c(dS_nv, dE_nv, dI_nv, dR_nv)))})
+	}
+
+################## Setting Parameters ##################
+#birth rate
+b=0.00000575
+#transmission parameter
+beta=0.0655
+#rate of becoming infectious
+lam=0.07143
+#rate of recovery
+gamma=0.005+(0.5*0.0165)
+#rate of waning immunity
+w=0.01095
+#death rates
+mu1=0.00005447
+mu2=0.00005447
+mu3=0.05
+mu4=0.00005447
+  
+my_pars <- cbind(beta,lam,gamma,w) 
+  #cbind - combines data-frames, combines columns and rows respectively
+
+############### Setting Time Frame ####################
+
+start_time = 0 # start date (years)
+end_time = 50 # end date (years)
+my_times <- seq(start_time, end_time, by = 0.25) 
+    # gives a sequence from start to end
+											 # in increments of 1 month
+
+############ Setting Initial Conditions ###############
+
+# initial starting values
+my_yinit <- c(S = n1*(1-(pE+pI+pR)), E = n1*pE,I = n1*pI, R = n1*pR)
+
+############# Running The Model ####################
+
+resultsNV1 <- as.data.frame(ode(y=my_yinit, times=my_times, func=my_model,
+	parms=my_pars, method='lsoda'))
+############# Creating N ####################
+resultsNV1$N <- (resultsNV1$S+resultsNV1$E+resultsNV1$I+resultsNV1$R)
+############ Plotting Results ########################
+
+colors <- c('Susceptible'='black','Exposed'='orange','Infected'='red', 'Recovered'='blue', 'Total'='pink')
+ggplot(data=resultsNV1) + geom_line(aes(x=time,y=S,col='Susceptible')) + 
+  geom_line(aes(x=time,y=E,col='Exposed')) +
+	geom_line(aes(x=time,y=I,col='Infected')) + 
+	geom_line(aes(x=time,y=R,col='Recovered')) +
+  geom_line(aes(x=time,y=N,col='Total')) +
+	scale_colour_manual(name="Legend",values=colors) +
+	xlab('Year') + ylab('Number of People') +
+  theme_bw() 
+
+############ Setting Initial Conditions ###############
+
+# initial starting values
+my_yinit <- c(S = n2*(1-(pE+pI+pR)), E = n2*pE,I = n2*pI, R = n2*pR)
+
+############# Running The Model ####################
+
+resultsNV2 <- as.data.frame(ode(y=my_yinit, times=my_times, func=my_model,
+	parms=my_pars, method='lsoda'))
+############# Creating N ####################
+resultsNV2$N <- (resultsNV2$S+resultsNV2$E+resultsNV2$I+resultsNV2$R)
+
+############ Setting Initial Conditions ###############
+
+# initial starting values
+my_yinit <- c(S = n3*(1-(pE+pI+pR)), E = n3*pE,I = n3*pI, R = n3*pR)
+
+############# Running The Model ####################
+
+resultsNV3 <- as.data.frame(ode(y=my_yinit, times=my_times, func=my_model,
+	parms=my_pars, method='lsoda'))
+############# Creating N ####################
+resultsNV3$N <- (resultsNV3$S+resultsNV3$E+resultsNV3$I+resultsNV3$R)
+
+```
+
+Vaccine:
+```{r}
+############# Model Equations ######################
+
+my_model1 <- function(times,yinit,pars){
+	
+	with(as.list(c(yinit,pars)), {
+	
+		N = S + E + I + R
+		dS <- w1*R + w2*V - beta*S
+		dE <- (1-vc)*beta*S - lam*E
+		dI <- lam*E - gamma*I
+		dV <- vc*beta*S - w2*V
+		dR <- gamma*I - w1*R
+
+	return(list(c(dS, dE, dI, dV, dR)))})
+	}
+
+################## Setting Parameters ##################
+#birth rate
+b=0.00000575
+#transmission parameter
+beta=0.065585
+#rate of becoming infectious
+lam=0.07143
+#rate of recovery
+gamma=0.005 + (0.5*0.0165)
+#rate of waning natural immunity
+w1=0.01095
+#vaccine coverage
+vc=0.78
+#rate of waning vaccine immunity (if different from natural)
+w2= 0.12
+#death rates
+mu1=0.00005447
+mu2=0.00005447
+mu3=0.05
+mu4=0.00005447
+  
+my_pars <- cbind(b,beta,lam,gamma,w1,vc,w2,mu1,mu2,mu3,mu4) 
+  #cbind - combines data-frames, combines columns and rows respectively
+
+############### Setting Time Frame ####################
+
+start_time = 0 # start date (years)
+end_time = 50 # end date (years)
+my_times <- seq(start_time, end_time, by = 0.25) 
+    # gives a sequence from start to end
+											 # in increments of 1 month
+
+############ Setting Initial Conditions ###############
+
+# initial starting values
+my_yinit <- c(S = n1*(1-(pE+pI+pR)), E = n1*pE,I = n1*pI, V=230462 ,R = n1*pR)
+
+############# Running The Model ####################
+
+results2 <- as.data.frame(ode(y=my_yinit, times=my_times, func=my_model1,
+	parms=my_pars, method='lsoda'))
+############# Creating N ####################
+results2$N <- (results2$S+results2$E+results2$I+results2$V+results2$R)
+############ Plotting Results ########################
+
+colors <- c('Susceptible'='black','Exposed'='orange','Infected'='red','Vaccinated'='green','Recovered'='blue', 'Total'='pink')
+ggplot(data=results2) + geom_line(aes(x=time,y=S,col='Susceptible')) + 
+  geom_line(aes(x=time,y=E,col='Exposed')) +
+	geom_line(aes(x=time,y=I,col='Infected')) + 
+	geom_line(aes(x=time,y=V,col='Vaccinated')) +
+	geom_line(aes(x=time,y=R,col='Recovered')) +
+  geom_line(aes(x=time,y=N,col='Total')) +
+	scale_colour_manual(name="Legend",values=colors) +
+	xlab('Year') + ylab('Number of People') +
+  theme_bw() 
+
+```
+
+Vaccine Expansion (new counties added in March 2023):
+Note: for this model, the first few years of the un-expanded program should be included and then switched to greater population numbers and coverage change 
+```{r}
+my_model2 <- function(times,yinit,pars){
+	
+	with(as.list(c(yinit,pars)), {
+	
+		N = S + E + I + R
+		dS <- w1*R + w2*V - beta*S
+		dE <- (1-vc)*beta*S - lam*E
+		dI <- lam*E - gamma*I
+		dV <- vc*beta*S - w2*V
+		dR <- gamma*I - w1*R
+
+	return(list(c(dS, dE, dI, dV, dR)))})
+	}
+
+################## Setting Parameters ##################
+#birth rate
+b=0.00000575
+#transmission parameter
+beta=0.065585
+#rate of becoming infectious
+lam=0.07143
+#rate of recovery
+gamma=0.005 + (0.5*0.0165)
+#rate of waning natural immunity
+w1=0.01095
+#vaccine coverage
+vc=0.78
+#rate of waning vaccine immunity (if different from natural)
+w2= 0.12
+#death rates
+mu1=0.00005447
+mu2=0.00005447
+mu3=0.05
+mu4=0.00005447
+  
+my_pars <- cbind(b,beta,lam,gamma,w1,vc,w2,mu1,mu2,mu3,mu4) 
+  #cbind - combines data-frames, combines columns and rows respectively
+
+############### Setting Time Frame ####################
+
+start_time = 0 # start date (years)
+end_time = 50 # end date (years)
+my_times <- seq(start_time, end_time, by = 0.25) 
+    # gives a sequence from start to end
+											 # in increments of 1 month
+
+############ Setting Initial Conditions ###############
+
+# initial starting values
+my_yinit <- c(S = n2*(1-(pE+pI+pR)), E = n2*pE,I = n2*pI, V=230462 ,R = n2*pR)
+
+############# Running The Model ####################
+
+results3 <- as.data.frame(ode(y=my_yinit, times=my_times, func=my_model2,
+	parms=my_pars, method='lsoda'))
+############# Creating N ####################
+results3$N <- (results3$S+results3$E+results3$I+results3$V+results3$R)
+############ Plotting Results ########################
+
+colors <- c('Susceptible'='black','Exposed'='orange','Infected'='red','Vaccinated'='green','Recovered'='blue', 'Total'='pink')
+ggplot(data=results3) + geom_line(aes(x=time,y=S,col='Susceptible')) + 
+  geom_line(aes(x=time,y=E,col='Exposed')) +
+	geom_line(aes(x=time,y=I,col='Infected')) + 
+	geom_line(aes(x=time,y=V,col='Vaccinated')) +
+	geom_line(aes(x=time,y=R,col='Recovered')) +
+  geom_line(aes(x=time,y=N,col='Total')) +
+	scale_colour_manual(name="Legend",values=colors) +
+	xlab('Year') + ylab('Number of People') +
+  theme_bw() 
+
+```
+
+
+All non-seasonal malaria regions
+```{r}
+
+
+my_model3 <- function(times,yinit,pars){
+	
+	with(as.list(c(yinit,pars)), {
+	
+		N = S + E + I + R
+		dS <- w1*R + w2*V - beta*S
+		dE <- (1-vc)*beta*S - lam*E
+		dI <- lam*E - gamma*I
+		dV <- vc*beta*S - w2*V
+		dR <- gamma*I - w1*R
+
+	return(list(c(dS, dE, dI, dV, dR)))})
+	}
+
+################## Setting Parameters ##################
+#birth rate
+b=0.00000575
+#transmission parameter
+beta=0.065585
+#rate of becoming infectious
+lam=0.07143
+#rate of recovery
+gamma=0.005 + (0.5*0.0165)
+#rate of waning natural immunity
+w1=0.01095
+#vaccine coverage
+vc=0.78
+#rate of waning vaccine immunity (if different from natural)
+w2= 0.12
+#death rates
+mu1=0.00005447
+mu2=0.00005447
+mu3=0.05
+mu4=0.00005447
+  
+my_pars <- cbind(b,beta,lam,gamma,w1,vc,w2,mu1,mu2,mu3,mu4) 
+  #cbind - combines data-frames, combines columns and rows respectively
+
+############### Setting Time Frame ####################
+
+start_time = 0 # start date (years)
+end_time = 50 # end date (years)
+my_times <- seq(start_time, end_time, by = 0.25) 
+    # gives a sequence from start to end
+											 # in increments of 1 month
+
+############ Setting Initial Conditions ###############
+
+# initial starting values
+my_yinit <- c(S = n3*(1-(pE+pI+pR)), E = n3*pE,I = n3*pI, V=230462 ,R = n3*pR)
+
+############# Running The Model ####################
+
+results4 <- as.data.frame(ode(y=my_yinit, times=my_times, func=my_model3,
+	parms=my_pars, method='lsoda'))
+############# Creating N ####################
+results4$N <- (results4$S+results4$E+results4$I+results4$V+results4$R)
+############ Plotting Results ########################
+
+colors <- c('Susceptible'='black','Exposed'='orange','Infected'='red','Vaccinated'='green','Recovered'='blue', 'Total'='pink')
+ggplot(data=results4) + geom_line(aes(x=time,y=S,col='Susceptible')) + 
+  geom_line(aes(x=time,y=E,col='Exposed')) +
+	geom_line(aes(x=time,y=I,col='Infected')) + 
+	geom_line(aes(x=time,y=V,col='Vaccinated')) +
+	geom_line(aes(x=time,y=R,col='Recovered')) +
+  geom_line(aes(x=time,y=N,col='Total')) +
+	scale_colour_manual(name="Legend",values=colors) +
+	xlab('Year') + ylab('Number of People') +
+  theme_bw() 
+
+```
+
+
+# Cost-Effectiveness Analysis
+
+```{r}
+# Probabilities
+pr_inpat = 0.008228  # probability of inpatient (hospitalization)
+pr_outpat = 0.8375 # probability of outpatient treatment
+pr_no_treat = 0.154272
+
+pr_death_inpat = 0.0127
+pr_death_outpat = 0.0063
+pr_death_notreat = 0.0389
+
+
+cases_NV1 <- sum(resultsNV1$I[1:20])*beta
+cases_NV2 <- sum(resultsNV2$I[1:20])*beta
+cases_NV3 <- sum(resultsNV3$I[1:20])*beta
+cases_V1 <- sum(results2$I[1:20])*beta
+cases_V2 <- sum(results3$I[1:20])*beta
+cases_V3 <- sum(results4$I[1:20])*beta
+
+cases_NV1
+cases_NV2
+cases_NV3
+cases_V1
+cases_V2
+cases_V3
+
+## Calculate the total number of cases, hospitalizations, and deaths
+Hospitalizations_NV1 = cases_NV1*pr_inpat
+Deaths_NV1= cases_NV1*(pr_inpat*pr_death_inpat +  
+                              pr_outpat*pr_death_outpat + 
+                              pr_no_treat*pr_death_notreat)
+Hospitalizations_NV2 = cases_NV2*pr_inpat
+Deaths_NV2= cases_NV2*(pr_inpat*pr_death_inpat +  
+                              pr_outpat*pr_death_outpat + 
+                              pr_no_treat*pr_death_notreat)
+Hospitalizations_NV3 = cases_NV3*pr_inpat
+Deaths_NV3= cases_NV3*(pr_inpat*pr_death_inpat +  
+                              pr_outpat*pr_death_outpat + 
+                              pr_no_treat*pr_death_notreat)
+Hospitalizations_V1 = cases_V1*pr_inpat
+Deaths_V1= cases_V1*(pr_inpat*pr_death_inpat +  
+                              pr_outpat*pr_death_outpat + 
+                              pr_no_treat*pr_death_notreat)
+Hospitalizations_V2 = cases_V2*pr_inpat
+Deaths_V2= cases_V2*(pr_inpat*pr_death_inpat +  
+                              pr_outpat*pr_death_outpat + 
+                              pr_no_treat*pr_death_notreat)
+Hospitalizations_V3 = cases_V3*pr_inpat
+Deaths_V3= cases_V3*(pr_inpat*pr_death_inpat +  
+                              pr_outpat*pr_death_outpat + 
+                              pr_no_treat*pr_death_notreat)
+
+# Cases averted with vaccine:
+CasesAverted_0 = cases_NV1 - cases_V1
+# Hospitalizations averted:
+HospAverted_0 = Hospitalizations_NV1 - Hospitalizations_V1
+# Deaths Averted
+DeathsAverted_0 = Deaths_NV1- Deaths_V1
+
+# Cases averted with vaccine:
+CasesAverted_E = cases_NV2 - cases_V2
+# Hospitalizations averted:
+HospAverted_E = Hospitalizations_NV2 - Hospitalizations_V2
+# Deaths Averted
+DeathsAverted_E = Deaths_NV2 - Deaths_V2
+
+# Cases averted with vaccine:
+CasesAverted_T = cases_NV3 - cases_V3
+# Hospitalizations averted:
+HospAverted_T = Hospitalizations_NV3 - Hospitalizations_V3
+# Deaths Averted
+DeathsAverted_T = Deaths_NV3 - Deaths_V3
+
+
+print(CasesAverted_0)
+print(HospAverted_0)
+print(DeathsAverted_0)
+
+print(CasesAverted_E)
+print(HospAverted_E)
+print(DeathsAverted_E)
+
+print(CasesAverted_T)
+print(HospAverted_T)
+print(DeathsAverted_T)
+
+############ Question 8 ##############
+
+# Calculate number of people vaccinated in each scenario
+# use same runs as in question 4
+
+# Routine: infants are vaccinated as they age from age class 1 to age class 2
+# vacc doses = sum of (aging rate from age class 1 to class 2 * vax coverage * (S + S_R + R + C + I_A)),
+# with the last two states representing "wasted" doses
+cov = 0.78
+Doses_V1 = sum(cov*sum(results2$S[1:12]))+230462
+Doses_V2 = sum(cov*sum(results3$S[1:20]))+230462
+Doses_V3 = sum(cov*sum(results4$S[1:20]))+230462
+Doses_V1 
+Doses_V2 
+Doses_V3 
+
+
+############ Question 9 ##############
+
+# Calculate ICERs for different strategy pairs
+
+# Routine vaccination vs no vaccination
+# Calculate Cost of Routine - Cost of No vaccination = net cost
+# Calculate DALYs with no vaccination -DALYs with Routine vaccination = DALYs averted (net benefit)
+
+# Costs
+cost_V = 3.01 + 2.46  # routine vaccine 
+cost_in_trt = 58  # inpatient treatment
+cost_out_trt = 2.50 # outpatient treatment
+
+# DALY info 
+daly_wt = 0.205
+dur_inf = ((0.845728*14)+((1-0.845728)*121))/365
+life_exp = 66.1
+ #life expectancy at death for each age group
+
+
+### Costs of each strategy ###
+
+# Cost of No vacc = 0 vaccine costs + cost of inpatient treatment * number of hospitalizations + cost of outpatient treatment * number outpatient treated
+Cost_NV1 = cost_in_trt*Hospitalizations_NV1 + 
+  cost_out_trt*cases_NV1*pr_outpat 
+Cost_NV2 = cost_in_trt*Hospitalizations_NV2 + 
+  cost_out_trt*cases_NV2*pr_outpat 
+Cost_NV3 = cost_in_trt*Hospitalizations_NV3 + 
+  cost_out_trt*cases_NV3*pr_outpat 
+
+# Cost of Routine = Cost of Routine Vaccination * number of vaccinations + 
+# cost of inpatient treatment * number of hospitalizations + cost of outpatient treatment * number outpatient treated
+
+Cost_V1 = cost_V*Doses_V1 + 
+  cost_in_trt*Hospitalizations_V1 + 
+  cost_out_trt*pr_outpat*cases_V1
+Cost_V2 = cost_V*Doses_V2 + 
+  cost_in_trt*Hospitalizations_V2 + 
+  cost_out_trt*pr_outpat*cases_V2
+Cost_V3 = cost_V*Doses_V3 + 
+  cost_in_trt*Hospitalizations_V3 + 
+  cost_out_trt*pr_outpat*cases_V3
+
+print(paste0("Cost of Routine Vaccination Scenario 1 ", round(Cost_V1,0)))
+print(paste0("Cost of No Vaccination Scenario 1 ", round(Cost_NV1,0)))
+print(paste0("Cost of Routine Vaccination Scenario 2 ", round(Cost_V2,0)))
+print(paste0("Cost of No Vaccination Scenario 2 ", round(Cost_NV2,0)))
+print(paste0("Cost of Routine Vaccination Scenario 3 ", round(Cost_V3,0)))
+print(paste0("Cost of No Vaccination Scenario 3 ", round(Cost_NV3,0)))
+
+
+
+# DALY = YLD + YLL
+# YLD (years lived with disability ) = Number of cases x duration of infection x disability weight
+# YLL (years of life lost) = number of deaths*life expectancy at age of death
+# # means we need to calculate separately for each age group
+
+# DALYs for No Vaccination    
+DALYs_NV1= cases_NV1*dur_inf*daly_wt + 
+  (pr_inpat*pr_death_inpat + pr_outpat*pr_death_outpat+pr_no_treat*pr_death_notreat)*
+  (sum(resultsNV1$I[1:20]))*(life_exp)
+DALYs_NV2= cases_NV2*dur_inf*daly_wt + 
+  (pr_inpat*pr_death_inpat + pr_outpat*pr_death_outpat+pr_no_treat*pr_death_notreat)*
+  (sum(resultsNV2$I[1:20]))*(life_exp)
+DALYs_NV3= cases_NV3*dur_inf*daly_wt + 
+  (pr_inpat*pr_death_inpat + pr_outpat*pr_death_outpat+pr_no_treat*pr_death_notreat)*
+  (sum(resultsNV3$I[1:20]))*(life_exp)
+
+# DALYs for Vaccine
+DALYs_V1=
+  cases_V1*dur_inf*daly_wt + 
+  (pr_inpat*pr_death_inpat + pr_outpat*pr_death_outpat+pr_no_treat*pr_death_notreat)*
+  (sum(results2$I[1:20]))*(life_exp)
+DALYs_V2=
+  cases_V2*dur_inf*daly_wt + 
+  (pr_inpat*pr_death_inpat + pr_outpat*pr_death_outpat+pr_no_treat*pr_death_notreat)*
+  (sum(results3$I[1:20]))*(life_exp)
+DALYs_V3=
+  cases_V3*dur_inf*daly_wt + 
+  (pr_inpat*pr_death_inpat + pr_outpat*pr_death_outpat+pr_no_treat*pr_death_notreat)*
+  (sum(results4$I[1:20]))*(life_exp)
+
+V1_NV1_ICER = (Cost_V1-Cost_NV1)/ (DALYs_NV1 - DALYs_V1)
+print(V1_NV1_ICER)
+
+V2_NV2_ICER = (Cost_V2-Cost_NV2)/ (DALYs_NV2 - DALYs_V2)
+print(V2_NV2_ICER)
+
+V3_NV3_ICER = (Cost_V3-Cost_NV3)/ (DALYs_NV3 - DALYs_V3)
+print(V3_NV3_ICER)
+
+costsV <- c(Cost_V1,Cost_V2,Cost_V3)
+costsNV <- c(Cost_NV1,Cost_NV2,Cost_NV3)
+DALYsV <- c(DALYs_V1,DALYs_V2,DALYs_V3)
+DALYsNV <- c(DALYs_NV1,DALYs_NV2,DALYs_NV3)
+plot((costsV-costsNV),(DALYsNV-DALYsV), xlab="DALYs Averted",ylab="DALYs Averted")
+
+```
+
+
